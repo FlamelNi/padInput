@@ -164,23 +164,34 @@ def axisType(ang, started, stickID):
     elif started < 315:
         sectionID = 'south'
     
-    # spin
-    spinID = 'on'
-    diff = started - ang
-    if diff > 180:
-        diff = -360 - diff
-    elif diff < -180:
-        diff = 360 - diff
-    if abs(diff) < AXIS_DIFF:
-        spinID = 'on'
-    elif diff > AXIS_DIFF:
-        spinID = 'right'
-    elif diff < AXIS_DIFF:
-        spinID = 'left'
+    # trigger
+    triggerID = 'on'
+    if gamepad['ABS_Z'] >= TRIGGER_HIGH and gamepad['ABS_RZ'] >= TRIGGER_HIGH:
+        triggerID = 'both'
+    elif gamepad['ABS_Z'] >= TRIGGER_HIGH:
+        triggerID = 'left'
+    elif gamepad['ABS_RZ'] >= TRIGGER_HIGH:
+        triggerID = 'right'
     else:
-         print('error')
+        triggerID = 'on'
     
-    print(AXIS_KEY_MAPPING[stickID][sectionID][spinID])
+    # spin
+    # spinID = 'on'
+    # diff = started - ang
+    # if diff > 180:
+    #     diff = -360 - diff
+    # elif diff < -180:
+    #     diff = 360 - diff
+    # if abs(diff) < AXIS_DIFF:
+    #     spinID = 'on'
+    # elif diff > AXIS_DIFF:
+    #     spinID = 'right'
+    # elif diff < AXIS_DIFF:
+    #     spinID = 'left'
+    # else:
+    #      print('error')
+    
+    print(AXIS_KEY_MAPPING[stickID][sectionID][triggerID])
     
 
 def axisUpdate():
