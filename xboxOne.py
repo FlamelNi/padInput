@@ -1,9 +1,21 @@
 
 from inputs import get_gamepad
 
-def init():
+# inputContainer = {}
+AXIS_MAX_VALUE = 40000
+TRIGGER_MAX_VALUE = 100
+
+def getNewEvent():
     
-    inputContainer = {}
+    arr = []
+    events = get_gamepad()
+    for event in events:
+        if event.ev_type == 'Key' or event.ev_type == 'Absolute':
+            if event.code == 'ABS_X' or event.code == 'ABS_Y' or event.code == 'ABS_RX' or event.code == 'ABS_RY':
+                arr.append([event.code, event.state/AXIS_MAX_VALUE*100])
+            else:
+                arr.append([event.code, event.state])
+    return arr
 
     # class gamepadAttribute:
     #     ev_type = ''
@@ -15,16 +27,15 @@ def init():
     #             self.code    = event.code
     #             self.state   = event.state
 
-
-    while 1:
-        events = get_gamepad()
-        for event in events:
-            if event.ev_type == 'Key' or event.ev_type == 'Absolute':
-                inputContainer[event.code] = event.state
-                print('\n\n\n\n\n')
-                i = 0
-                for a in list(inputContainer.keys()):
-                    print(str(a) + ': ' + str(inputContainer[a]) )
+    # while 1:
+    #     events = get_gamepad()
+    #     for event in events:
+    #         if event.ev_type == 'Key' or event.ev_type == 'Absolute':
+    #             inputContainer[event.code] = event.state
+    #             print('\n\n\n\n\n')
+    #             i = 0
+    #             for a in list(inputContainer.keys()):
+    #                 print(str(a) + ': ' + str(inputContainer[a]) )
 
 
 
@@ -34,24 +45,24 @@ def init():
             # print('\n')
 
 '''
-ABS_Y: -158
-ABS_RY: -3261
-ABS_RX: -157
-ABS_X: 706
-BTN_THUMBR: 0
-BTN_THUMBL: 0
+ABS_X: 0
+ABS_Y: 0
+ABS_RX: 0
+ABS_RY: 0
+BTN_WEST: 0
+BTN_EAST: 0
+BTN_SOUTH: 0
+BTN_NORTH: 0
 ABS_HAT0Y: 0
 ABS_HAT0X: 0
+BTN_TR: 0
+BTN_TL: 0
+ABS_RZ: 0
+ABS_Z: 0
 BTN_START: 0
 BTN_SELECT: 0
-BTN_SOUTH: 0
-BTN_EAST: 0
-BTN_NORTH: 0
-BTN_WEST: 0
-BTN_TR: 0
-ABS_RZ: 0
-BTN_TL: 0
-ABS_Z: 0
+BTN_THUMBR: 0
+BTN_THUMBL: 0
 '''
 
 
