@@ -3,7 +3,7 @@ from inputs import get_gamepad
 
 # inputContainer = {}
 AXIS_MAX_VALUE = 40000
-TRIGGER_MAX_VALUE = 100
+TRIGGER_MAX_VALUE = 255
 
 def getNewEvent():
     
@@ -13,6 +13,8 @@ def getNewEvent():
         if event.ev_type == 'Key' or event.ev_type == 'Absolute':
             if event.code == 'ABS_X' or event.code == 'ABS_Y' or event.code == 'ABS_RX' or event.code == 'ABS_RY':
                 arr.append([event.code, event.state/AXIS_MAX_VALUE*100])
+            elif event.code == 'ABS_Z' or event.code == 'ABS_RZ':
+                arr.append([event.code, event.state/TRIGGER_MAX_VALUE*100])
             else:
                 arr.append([event.code, event.state])
     return arr

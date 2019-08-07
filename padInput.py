@@ -10,6 +10,7 @@ gamepadType = 'xboxOne'
 
 AXIS_HIGH = 70
 AXIS_DIFF = 40
+TRIGGER_HIGH = 80
 
 AXIS_KEY_MAPPING=[
 {
@@ -141,13 +142,6 @@ def vec2coord(vec):
     y = m * math.sin(radians(a))
     return (x,y)
 
-# def axisType(vec, started):
-# 
-#     # ang = vec[0]*started[0]+vec[1]*started[1]
-#     # ang = ang / (coord2vec(vec)[0]*coord2vec(started)[0])
-#     # ang = math.degrees(math.acos(ang))
-# 
-#     print(ang)
 
 def axisType(ang, started, stickID):
     global AXIS_DIFF
