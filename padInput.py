@@ -1,6 +1,7 @@
 
 import xboxOne
 import math
+from pynput.keyboard import Key, Controller
 from os import system
 def clearScreen():
     system('cls')
@@ -17,44 +18,52 @@ AXIS_KEY_MAPPING=[
     'east'  : {
         'left'  : 'l',
         'on'    : 'a',
-        'right' : 'b'
+        'right' : 'b',
+        'both'  : '.'
     },
     'north' : {
         'left'  : 'w',
         'on'    : 'e',
-        'right' : 'h'
+        'right' : 'h',
+        'both'  : '.'
     },
     'west'  : {
         'left'  : 'j',
         'on'    : 'i',
-        'right' : 'c'
+        'right' : 'c',
+        'both'  : '.'
     },
     'south' : {
         'left'  : 'f',
         'on'    : 's',
-        'right' : 'x'
+        'right' : 'x',
+        'both'  : '.'
     },
 },
 {
     'east'  : {
         'left'  : 'm',
         'on'    : 'n',
-        'right' : 'k'
+        'right' : 'k',
+        'both'  : '.'
     },
     'north' : {
         'left'  : 'g',
         'on'    : 't',
-        'right' : 'd'
+        'right' : 'd',
+        'both'  : '.'
     },
     'west'  : {
         'left'  : 'p',
         'on'    : 'o',
-        'right' : 'u'
+        'right' : 'u',
+        'both'  : '.'
     },
     'south' : {
         'left'  : 'q',
         'on'    : 'r',
-        'right' : 'y'
+        'right' : 'y',
+        'both'  : '.'
     }
 }]
 
@@ -96,24 +105,28 @@ gamepad = {
 # 
 
 
-axisStatus = {
+padStatus = {
 'ABS': False,
-'ABS_R': False#,
-# 'BTN_WEST': 0,
-# 'BTN_EAST': 0,
-# 'BTN_SOUTH': 0,
-# 'BTN_NORTH': 0,
-# 'ABS_HAT0Y': 0,
-# 'ABS_HAT0X': 0,
-# 'BTN_TR': 0,
-# 'BTN_TL': 0,
-# 'ABS_RZ': 0,
-# 'ABS_Z': 0,
-# 'BTN_START': 0,
-# 'BTN_SELECT': 0,
-# 'BTN_THUMBR': 0,
-# 'BTN_THUMBL': 0
+'ABS_R': False,
+'BTN_WEST': 0,
+'BTN_EAST': 0,
+'BTN_SOUTH': 0,
+'BTN_NORTH': 0,
+'ABS_HAT0Y': 0,
+'ABS_HAT0X': 0,
+'BTN_TR': 0,
+'BTN_TL': 0,
+'ABS_RZ': 0,
+'ABS_Z': 0,
+'BTN_START': 0,
+'BTN_SELECT': 0,
+'BTN_THUMBR': 0,
+'BTN_THUMBL': 0
 }
+
+keyboard = Controller()
+
+
 
 def updateGamepad():
     global gamepad
@@ -142,9 +155,19 @@ def vec2coord(vec):
     y = m * math.sin(radians(a))
     return (x,y)
 
+def bindBtnKey(btn, key):
+    if padStatus[btn] == 0 and gamepad[btn] == 1:
+        padStatus[btn] = 1
+        keyboard.press(key)
+    elif padStatus[btn] == 1 and gamepad[btn] == 0:
+        padStatus[btn] = 0
+        keyboard.release(key)
+    
+    
 
 def axisType(ang, started, stickID):
     global AXIS_DIFF
+    global keyboard
     if ang < 0:
         ang += 360
     if started < 0:
@@ -175,52 +198,38 @@ def axisType(ang, started, stickID):
     else:
         triggerID = 'on'
     
-    # spin
-    # spinID = 'on'
-    # diff = started - ang
-    # if diff > 180:
-    #     diff = -360 - diff
-    # elif diff < -180:
-    #     diff = 360 - diff
-    # if abs(diff) < AXIS_DIFF:
-    #     spinID = 'on'
-    # elif diff > AXIS_DIFF:
-    #     spinID = 'right'
-    # elif diff < AXIS_DIFF:
-    #     spinID = 'left'
-    # else:
-    #      print('error')
-    
-    print(AXIS_KEY_MAPPING[stickID][sectionID][triggerID])
+    pressedKey = AXIS_KEY_MAPPING[stickID][sectionID][triggerID]
+    keyboard.press(pressedKey)
+    keyboard.release(pressedKey)
     
 
 def axisUpdate():
     global gamepad
-    global axisStatus
+    global padStatus
     global AXIS_HIGH
     coord = (gamepad['ABS_X'], gamepad['ABS_Y'])
     vec = coord2vec((gamepad['ABS_X'], gamepad['ABS_Y']))
     mag = vec[0]
     ang = vec[1]
     if mag < AXIS_HIGH:
-        if axisStatus['ABS'] != False:
-            axisType(ang, axisStatus['ABS'], 0)
-            axisStatus['ABS'] = False
+        if padStatus['ABS'] != False:
+            axisType(ang, padStatus['ABS'], 0)
+            padStatus['ABS'] = False
     else:
-        if axisStatus['ABS'] == False:
-            axisStatus['ABS'] = ang
+        if padStatus['ABS'] == False:
+            padStatus['ABS'] = ang
     
     coord = (gamepad['ABS_RX'], gamepad['ABS_RY'])
     vec = coord2vec((gamepad['ABS_RX'], gamepad['ABS_RY']))
     mag = vec[0]
     ang = vec[1]
     if mag < AXIS_HIGH:
-        if axisStatus['ABS_R'] != False:
-            axisType(ang, axisStatus['ABS_R'], 1)
-            axisStatus['ABS_R'] = False
+        if padStatus['ABS_R'] != False:
+            axisType(ang, padStatus['ABS_R'], 1)
+            padStatus['ABS_R'] = False
     else:
-        if axisStatus['ABS_R'] == False:
-            axisStatus['ABS_R'] = ang
+        if padStatus['ABS_R'] == False:
+            padStatus['ABS_R'] = ang
     
     
     
@@ -234,13 +243,19 @@ quitPadInput = False
 while not quitPadInput:
     updateGamepad()
     axisUpdate()
-    # print(gamepad['BTN_SOUTH'])
-    # if maxTest < math.sqrt(gamepad['ABS_X']**2 + gamepad['ABS_Y']**2):
-    #     maxTest = math.sqrt(gamepad['ABS_X']**2 + gamepad['ABS_Y']**2)
-    if gamepad['BTN_SOUTH'] == 1:
-        clearScreen()
-    #     print(maxTest)
-    #     maxTest = 0
+    
+    
+    bindBtnKey('BTN_SOUTH', Key.space)
+    bindBtnKey('BTN_WEST', Key.enter)
+    bindBtnKey('BTN_EAST', Key.backspace)
+    
+    
+    if gamepad['BTN_TL'] == 1:
+        padStatus['BTN_TL'] = 1
+        keyboard.press(Key.shift)
+    elif padStatus['BTN_TL'] == 1 and gamepad['BTN_TL'] == 0:
+        padStatus['BTN_TL'] = 0
+        keyboard.release(Key.shift)
     
     if gamepad['BTN_START'] == 1:
         break
