@@ -1,5 +1,14 @@
 
 from inputs import get_gamepad
+from time import sleep
+
+# def get_gamepadMod():
+#     try:
+#         gamepad = inputs.DeviceManager().gamepads[0]
+#         # sleep(0.02)
+#     except IndexError:
+#         raise UnpluggedError("No gamepad found.")
+#     return gamepad.read()
 
 # inputContainer = {}
 AXIS_MAX_VALUE = 40000
@@ -8,7 +17,7 @@ TRIGGER_MAX_VALUE = 255
 def getNewEvent():
     
     arr = []
-    events = get_gamepad()
+    events = get_gamepad()# TODO: this function from library consume a lot of cpu power
     for event in events:
         if event.ev_type == 'Key' or event.ev_type == 'Absolute':
             if event.code == 'ABS_X' or event.code == 'ABS_Y' or event.code == 'ABS_RX' or event.code == 'ABS_RY':

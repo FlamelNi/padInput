@@ -1,6 +1,7 @@
 
 import xboxOne
 import math
+from time import sleep
 from pynput.keyboard import Key, Controller
 from os import system
 def clearScreen():
@@ -259,6 +260,9 @@ while not quitPadInput:
     
     if gamepad['BTN_START'] == 1:
         break
+    
+    # sleep(0.2)
+    
 
 
 
