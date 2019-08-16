@@ -91,7 +91,11 @@ EASY_LIST=[
 'tear'
 ]
 
-DIFFICULTY = 1
+
+# 0, 1, 2 for DIFFICULTY
+DIFFICULTY = 2
+# if casual is True, basic alphavet practice
+# if casual is False, word practice
 casual = True
 
 keyList = []
