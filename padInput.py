@@ -1,140 +1,76 @@
 
 import xboxOne
 import math
-from time import sleep
+import gamepadLib
+import time
 from pynput.keyboard import Key, Controller
 from os import system
 def clearScreen():
     system('cls')
 
-
 gamepadType = 'xboxOne'
 
-AXIS_HIGH = 70
-AXIS_DIFF = 40
-TRIGGER_HIGH = 80
+AXIS_HIGH           = 0.70
+AXIS_DIFF           = 0.40
+TRIGGER_HIGH        = 0.80
+PUSH_ANGLE_RANGE    = 15
+HOLD_TIME           = 1
+RAPID_TIME          = 0.5
 
 AXIS_KEY_MAPPING=[
 {
-    'east'  : {
-        'left'  : 'l',
-        'on'    : 'a',
-        'right' : 'b',
-        'both'  : '.'
+    'E'  : {
+        'L'  : 'l',
+        ''    : 'a',
+        'R' : 'b'
     },
-    'north' : {
-        'left'  : 'w',
-        'on'    : 'e',
-        'right' : 'h',
-        'both'  : '.'
+    'N' : {
+        'L'  : 'w',
+        ''    : 'e',
+        'R' : 'h'
     },
-    'west'  : {
-        'left'  : 'j',
-        'on'    : 'i',
-        'right' : 'c',
-        'both'  : '.'
+    'W'  : {
+        'L'  : 'j',
+        ''    : 'i',
+        'R' : 'c'
     },
-    'south' : {
-        'left'  : 'f',
-        'on'    : 's',
-        'right' : 'x',
-        'both'  : '.'
+    'S' : {
+        'L'  : 'f',
+        ''    : 's',
+        'R' : 'x'
     },
 },
 {
-    'east'  : {
-        'left'  : 'm',
-        'on'    : 'n',
-        'right' : 'k',
-        'both'  : '.'
+    'E'  : {
+        'L'  : 'm',
+        ''    : 'n',
+        'R' : 'k'
     },
-    'north' : {
-        'left'  : 'g',
-        'on'    : 't',
-        'right' : 'd',
-        'both'  : '.'
+    'N' : {
+        'L'  : 'g',
+        ''    : 't',
+        'R' : 'd'
     },
-    'west'  : {
-        'left'  : 'p',
-        'on'    : 'o',
-        'right' : 'u',
-        'both'  : '.'
+    'W'  : {
+        'L'  : 'p',
+        ''    : 'o',
+        'R' : 'u'
     },
-    'south' : {
-        'left'  : 'q',
-        'on'    : 'r',
-        'right' : 'y',
-        'both'  : '.'
+    'S' : {
+        'L'  : 'q',
+        ''    : 'r',
+        'R' : 'y'
     }
 }]
 
-getNewEvent = None
-
-if gamepadType == 'xboxOne':
-    getNewEvent = xboxOne.getNewEvent
-else:
-    print('currently, only xboxOne controller is supported')
-
-gamepad = {
-'ABS_X': 0,
-'ABS_Y': 0,
-'ABS_RX': 0,
-'ABS_RY': 0,
-'BTN_WEST': 0,
-'BTN_EAST': 0,
-'BTN_SOUTH': 0,
-'BTN_NORTH': 0,
-'ABS_HAT0Y': 0,
-'ABS_HAT0X': 0,
-'BTN_TR': 0,
-'BTN_TL': 0,
-'ABS_RZ': 0,
-'ABS_Z': 0,
-'BTN_START': 0,
-'BTN_SELECT': 0,
-'BTN_THUMBR': 0,
-'BTN_THUMBL': 0
-}
-
-
-# for keyboard status:
-# if axis is zeroed = False
-# if axis reach high = angle
-# 
-# 
-# 
-# 
-
-
-padStatus = {
-'ABS': False,
-'ABS_R': False,
-'BTN_WEST': 0,
-'BTN_EAST': 0,
-'BTN_SOUTH': 0,
-'BTN_NORTH': 0,
-'ABS_HAT0Y': 0,
-'ABS_HAT0X': 0,
-'BTN_TR': 0,
-'BTN_TL': 0,
-'ABS_RZ': 0,
-'ABS_Z': 0,
-'BTN_START': 0,
-'BTN_SELECT': 0,
-'BTN_THUMBR': 0,
-'BTN_THUMBL': 0
-}
+gamepad = {}
 
 keyboard = Controller()
 
-
-
-def updateGamepad():
+def update_gamepad():
     global gamepad
-    events = getNewEvent()
-    for a in events:
-        gamepad[a[0]]=a[1]
-    
+    gamepad = gamepadLib.get_gamepad(gamepadType)
+
 
 def coord2vec(coord):
     x = coord[0]
@@ -156,112 +92,223 @@ def vec2coord(vec):
     y = m * math.sin(radians(a))
     return (x,y)
 
-def bindBtnKey(btn, key):
-    if padStatus[btn] == 0 and gamepad[btn] == 1:
-        padStatus[btn] = 1
-        keyboard.press(key)
-    elif padStatus[btn] == 1 and gamepad[btn] == 0:
-        padStatus[btn] = 0
-        keyboard.release(key)
-    
-    
 
-def axisType(ang, started, stickID):
-    global AXIS_DIFF
+def angle_overflow(angle):
+    # in degrees
+    if angle < 0:
+        angle += 360
+    if angle >= 360:
+        angle -= 360
+    return angle
+
+'''
+    1
+2       0
+    3
+'''
+
+def section_to_4(section):
+    a = ['E', 'N', 'W', 'S']
+    return a[section]
+
+def get_angle_section(angle):
+    # in degrees
+    section = -1
+    if angle < 45 or angle >= 315:
+        section = 0
+    elif angle >= 45 and angle < 135:
+        section = 1
+    elif angle >= 135 and angle < 225:
+        section = 2
+    elif angle >= 225 and angle < 315:
+        section = 3
+    else:
+        print('ERROR')
+    return section
+
+def type_english(stick):
     global keyboard
-    if ang < 0:
-        ang += 360
-    if started < 0:
-        started += 360
-    # debug
-    if ang > 360 or started > 360:
-        print('EERRROROR')
-    
-    # section
-    sectionID = 'east'
-    if started < 45 or started >= 315:
-        sectionID = 'east'
-    elif started < 135:
-        sectionID = 'north'
-    elif started < 225:
-        sectionID = 'west'
-    elif started < 315:
-        sectionID = 'south'
-    
-    # trigger
-    triggerID = 'on'
-    if gamepad['ABS_Z'] >= TRIGGER_HIGH and gamepad['ABS_RZ'] >= TRIGGER_HIGH:
-        triggerID = 'both'
-    elif gamepad['ABS_Z'] >= TRIGGER_HIGH:
-        triggerID = 'left'
-    elif gamepad['ABS_RZ'] >= TRIGGER_HIGH:
-        triggerID = 'right'
+    key = ''
+    if stick.spin == 'B':
+        if stick.name == 'L':
+            key = 'v'
+        elif stick.name == 'R':
+            key = 'z'
     else:
-        triggerID = 'on'
+        num = -1
+        if stick.name == 'L':
+            num = 0
+        elif stick.name == 'R':
+            num = 1
+        key = AXIS_KEY_MAPPING[num][section_to_4(get_angle_section(stick.started_angle))][stick.spin]
+    keyboard.press(key)
+    keyboard.release(key)
     
-    pressedKey = AXIS_KEY_MAPPING[stickID][sectionID][triggerID]
-    keyboard.press(pressedKey)
-    keyboard.release(pressedKey)
+class Stick:
+    def __init__(self, name=''):
+        self.name           = name
+        self.is_high        = False
+        self.started_angle  = False
+        self.pushing_angle  = False
+        self.spin           = ''
+        self.status         = 0
+    
+    def get_angle(self):
+        global gamepad
+        vec = coord2vec((gamepad.axis[self.name + 'X'], gamepad.axis[self.name + 'Y']))
+        return vec[1]
+        
+    def get_mag(self):
+        global gamepad
+        vec = coord2vec((gamepad.axis[self.name + 'X'], gamepad.axis[self.name + 'Y']))
+        return vec[0]
+        
+    def check_low_to_high(self):
+        global AXIS_HIGH
+        if not self.is_high and self.get_mag() >= AXIS_HIGH:
+            self.started_angle = self.get_angle()
+            self.is_high = True
+            self.spin = ''
+            self.status = 1
+            return True
+        return False
+    def check_high_to_low(self):
+        global AXIS_HIGH
+        if self.is_high and self.get_mag() < AXIS_HIGH:
+            self.is_high = False
+            return True
+        return False
+    def reset(self):
+        self.status = 0
+        self.spin = ''
+    def check_spin(self,target_angle):
+        sangle = get_angle_section(self.started_angle)
+        pangle = get_angle_section(target_angle)
+        if pangle - sangle == 1 or pangle - sangle == -3:
+            return 'L'
+        elif pangle - sangle == -1 or pangle - sangle == 3:
+            return 'R'
+        elif pangle - sangle == -2 or pangle - sangle == 2:
+            return 'B'
+        else:
+            return ''
+
+class Button:
+    def __init__(self, name=''):
+        self.name           = name
+        self.is_pressed     = False
+        self.last_pressed   = 0
+        self.status         = 0
+        self.if_clicked     = lambda: None
+        self.if_released    = lambda: None
+        self.if_hold        = lambda: None
+    def set_clicked_callback(self, funct):
+        self.if_clicked = funct
+    def set_released_callback(self, funct):
+        self.if_released = funct
+    def set_hold_callback(self, funct):
+        self.if_hold = funct
+    def callback_reset(self):
+        self.if_clicked     = lambda: None
+        self.if_released    = lambda: None
+        self.if_hold        = lambda: None
+    def check_pressed(self):
+        if self.is_pressed:
+            if gamepad.btn[self.name]:
+                if time.time() >= self.last_pressed + HOLD_TIME:
+                    self.if_hold()
+                    self.last_pressed = self.last_pressed + RAPID_TIME - HOLD_TIME
+            else:
+                # just released
+                self.is_pressed = False
+                self.if_released()
+        else:
+            if gamepad.btn[self.name]:
+                self.last_pressed = time.time()
+                self.is_pressed = True
+                self.if_clicked()
+
+pad_status = {
+'L': Stick('L'),
+'R': Stick('R'),
+'N': Button('N'),
+'S': Button('S'),
+'W': Button('W'),
+'E': Button('E'),
+'LB': Button('LB'),
+'RB': Button('RB'),
+'LS': Button('LS'),
+'RS': Button('RS'),
+'SEL': Button('SEL'),
+'STA': Button('STA')
+}
+
+def bind_btn_key(btn, key, rapid_hold=True):
+    
+    if rapid_hold:
+        def clicked():
+            keyboard.press(key)
+            keyboard.release(key)
+        pad_status[btn].set_clicked_callback(clicked)
+        
+        pad_status[btn].set_hold_callback(clicked)
+    else:
+        def clicked():
+            keyboard.press(key)
+        def released():
+            keyboard.release(key)
+        pad_status[btn].set_clicked_callback(clicked)
+        pad_status[btn].set_released_callback(released)
+        
+    
+    return False
+
+# if mode is English
+bind_btn_key('S', Key.space)
+bind_btn_key('W', Key.enter)
+bind_btn_key('E', Key.backspace)
+bind_btn_key('LB', Key.shift, False)
+
+def axis_update():
+    global gamepad
+    global pad_status
+    global AXIS_HIGH
+    sides = {'L', 'R'}
+    for side in sides:
+        coord = (gamepad.axis[side + 'X'], gamepad.axis[side + 'Y'])
+        vec = coord2vec((gamepad.axis[side + 'X'], gamepad.axis[side + 'Y']))
+        mag = vec[0]
+        ang = vec[1]
+        if not pad_status[side].check_low_to_high():
+            if pad_status[side].check_high_to_low():
+                # if mode is English:
+                type_english(pad_status[side])
+                pad_status[side].reset()
+        
+        if pad_status[side].is_high:
+            pad_status[side].spin = pad_status[side].check_spin(pad_status[side].get_angle())
+
+def button_update():
+    for btnName in list(pad_status.keys()):
+        btn = pad_status[btnName]
+        if type(btn) == Button:
+            btn.check_pressed()
     
 
-def axisUpdate():
-    global gamepad
-    global padStatus
-    global AXIS_HIGH
-    coord = (gamepad['ABS_X'], gamepad['ABS_Y'])
-    vec = coord2vec((gamepad['ABS_X'], gamepad['ABS_Y']))
-    mag = vec[0]
-    ang = vec[1]
-    if mag < AXIS_HIGH:
-        if padStatus['ABS'] != False:
-            axisType(ang, padStatus['ABS'], 0)
-            padStatus['ABS'] = False
-    else:
-        if padStatus['ABS'] == False:
-            padStatus['ABS'] = ang
-    
-    coord = (gamepad['ABS_RX'], gamepad['ABS_RY'])
-    vec = coord2vec((gamepad['ABS_RX'], gamepad['ABS_RY']))
-    mag = vec[0]
-    ang = vec[1]
-    if mag < AXIS_HIGH:
-        if padStatus['ABS_R'] != False:
-            axisType(ang, padStatus['ABS_R'], 1)
-            padStatus['ABS_R'] = False
-    else:
-        if padStatus['ABS_R'] == False:
-            padStatus['ABS_R'] = ang
-    
-    
-    
-    
-    
 
 quitPadInput = False
 
 
 # maxTest = 0
 while not quitPadInput:
-    updateGamepad()
-    axisUpdate()
+    update_gamepad()
+    axis_update()
+    button_update()
     
+    # if gamepad['BTN_START'] == 1:
+    #     break
     
-    bindBtnKey('BTN_SOUTH', Key.space)
-    bindBtnKey('BTN_WEST', Key.enter)
-    bindBtnKey('BTN_EAST', Key.backspace)
-    
-    
-    if gamepad['BTN_TL'] == 1:
-        padStatus['BTN_TL'] = 1
-        keyboard.press(Key.shift)
-    elif padStatus['BTN_TL'] == 1 and gamepad['BTN_TL'] == 0:
-        padStatus['BTN_TL'] = 0
-        keyboard.release(Key.shift)
-    
-    if gamepad['BTN_START'] == 1:
-        break
-    
-    # sleep(0.2)
+    time.sleep(0.02)
     
 
 
