@@ -1,6 +1,6 @@
 
-import xboxOne
 import math
+import angleLib
 import gamepadLib
 import time
 from pynput.keyboard import Key, Controller
@@ -62,6 +62,9 @@ AXIS_KEY_MAPPING=[
         'R' : 'y'
     }
 }]
+def get_mapping():
+    global AXIS_KEY_MAPPING
+    return AXIS_KEY_MAPPING
 
 gamepad = {}
 
@@ -72,59 +75,7 @@ def update_gamepad():
     gamepad = gamepadLib.get_gamepad(gamepadType)
 
 
-def coord2vec(coord):
-    x = coord[0]
-    y = coord[1]
-    m = math.sqrt(x**2 + y**2)
-    a = 0
-    if m < 0.01:
-        a = False
-    else:
-        a = math.degrees(math.acos(x/m))
-    if y < 0:
-        a = 360 - a
-    return (m,a)
-
-def vec2coord(vec):
-    m = vec[0]
-    a = vec[1]
-    x = m * math.cos(radians(a))
-    y = m * math.sin(radians(a))
-    return (x,y)
-
-
-def angle_overflow(angle):
-    # in degrees
-    if angle < 0:
-        angle += 360
-    if angle >= 360:
-        angle -= 360
-    return angle
-
-'''
-    1
-2       0
-    3
-'''
-
-def section_to_4(section):
-    a = ['E', 'N', 'W', 'S']
-    return a[section]
-
-def get_angle_section(angle):
-    # in degrees
-    section = -1
-    if angle < 45 or angle >= 315:
-        section = 0
-    elif angle >= 45 and angle < 135:
-        section = 1
-    elif angle >= 135 and angle < 225:
-        section = 2
-    elif angle >= 225 and angle < 315:
-        section = 3
-    else:
-        print('ERROR')
-    return section
+import uiScreen
 
 def type_english(stick):
     global keyboard
@@ -140,7 +91,7 @@ def type_english(stick):
             num = 0
         elif stick.name == 'R':
             num = 1
-        key = AXIS_KEY_MAPPING[num][section_to_4(get_angle_section(stick.started_angle))][stick.spin]
+        key = AXIS_KEY_MAPPING[num][angleLib.section_to_four(angleLib.get_angle_section(stick.started_angle))][stick.spin]
     keyboard.press(key)
     keyboard.release(key)
     
@@ -155,12 +106,12 @@ class Stick:
     
     def get_angle(self):
         global gamepad
-        vec = coord2vec((gamepad.axis[self.name + 'X'], gamepad.axis[self.name + 'Y']))
+        vec = angleLib.coord2vec((gamepad.axis[self.name + 'X'], gamepad.axis[self.name + 'Y']))
         return vec[1]
         
     def get_mag(self):
         global gamepad
-        vec = coord2vec((gamepad.axis[self.name + 'X'], gamepad.axis[self.name + 'Y']))
+        vec = angleLib.coord2vec((gamepad.axis[self.name + 'X'], gamepad.axis[self.name + 'Y']))
         return vec[0]
         
     def check_low_to_high(self):
@@ -182,8 +133,8 @@ class Stick:
         self.status = 0
         self.spin = ''
     def check_spin(self,target_angle):
-        sangle = get_angle_section(self.started_angle)
-        pangle = get_angle_section(target_angle)
+        sangle = angleLib.get_angle_section(self.started_angle)
+        pangle = angleLib.get_angle_section(target_angle)
         if pangle - sangle == 1 or pangle - sangle == -3:
             return 'L'
         elif pangle - sangle == -1 or pangle - sangle == 3:
@@ -267,7 +218,18 @@ def bind_btn_key(btn, key, rapid_hold=True):
 bind_btn_key('S', Key.space)
 bind_btn_key('W', Key.enter)
 bind_btn_key('E', Key.backspace)
+bind_btn_key('N', '.')
 bind_btn_key('LB', Key.shift, False)
+
+english_mode_guide_toggle = False
+def flip_english_mode_guide_toggle():
+    global english_mode_guide_toggle
+    english_mode_guide_toggle = not english_mode_guide_toggle
+    if english_mode_guide_toggle:
+        uiScreen.open_window()
+    else:
+        uiScreen.close_window()
+pad_status['SEL'].set_clicked_callback(flip_english_mode_guide_toggle)
 
 def axis_update():
     global gamepad
@@ -276,7 +238,7 @@ def axis_update():
     sides = {'L', 'R'}
     for side in sides:
         coord = (gamepad.axis[side + 'X'], gamepad.axis[side + 'Y'])
-        vec = coord2vec((gamepad.axis[side + 'X'], gamepad.axis[side + 'Y']))
+        vec = angleLib.coord2vec((gamepad.axis[side + 'X'], gamepad.axis[side + 'Y']))
         mag = vec[0]
         ang = vec[1]
         if not pad_status[side].check_low_to_high():
@@ -304,7 +266,7 @@ while not quitPadInput:
     update_gamepad()
     axis_update()
     button_update()
-    
+    # print(time.time())
     # if gamepad['BTN_START'] == 1:
     #     break
     
