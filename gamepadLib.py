@@ -88,6 +88,7 @@ class Gamepad:
             dmap.extraTranslate()
         if dmap.scale is not False:
             dmap.scale()
+        # j.quit()
     
 
 pygame.init()

@@ -74,27 +74,13 @@ def update_gamepad():
     global gamepad
     gamepad = gamepadLib.get_gamepad(gamepadType)
 
+class uiScreen:
+    def open_window():
+        system('guide.png')
+    def close_window():
+        # system('guide.png')
+        pass
 
-import uiScreen
-
-def type_english(stick):
-    global keyboard
-    key = ''
-    if stick.spin == 'B':
-        if stick.name == 'L':
-            key = 'v'
-        elif stick.name == 'R':
-            key = 'z'
-    else:
-        num = -1
-        if stick.name == 'L':
-            num = 0
-        elif stick.name == 'R':
-            num = 1
-        key = AXIS_KEY_MAPPING[num][angleLib.section_to_four(angleLib.get_angle_section(stick.started_angle))][stick.spin]
-    keyboard.press(key)
-    keyboard.release(key)
-    
 class Stick:
     def __init__(self, name=''):
         self.name           = name
@@ -211,25 +197,75 @@ def bind_btn_key(btn, key, rapid_hold=True):
         pad_status[btn].set_clicked_callback(clicked)
         pad_status[btn].set_released_callback(released)
         
-    
     return False
 
-# if mode is English
-bind_btn_key('S', Key.space)
-bind_btn_key('W', Key.enter)
-bind_btn_key('E', Key.backspace)
-bind_btn_key('N', '.')
-bind_btn_key('LB', Key.shift, False)
+def unbind_all_btn():
+    for btn in pad_status:
+        if type(btn) == Button:
+            pad_status[btn].set_clicked_callback(lambda:None)
+            pad_status[btn].set_hold_callback(lambda:None)
+            pad_status[btn].set_released_callback(lambda:None)
 
-english_mode_guide_toggle = False
-def flip_english_mode_guide_toggle():
-    global english_mode_guide_toggle
-    english_mode_guide_toggle = not english_mode_guide_toggle
-    if english_mode_guide_toggle:
-        uiScreen.open_window()
+class Input_mode:
+    def __init__(self, name='', on=lambda:None, update=lambda:None):
+        self.name = name
+        self.update = update
+        self.on = on
+        self.sub = None
+
+class Writting_mode(Input_mode):
+    def __init__(self, name='', on=lambda:None, update=lambda:None, type=lambda:None):
+        Input_mode.__init__(self, name, on, update)
+        self.type = type
+
+
+# type_english(pad_status[side])
+
+def english_update():
+    axis_update()
+    button_update()
+def english_on():
+    # if mode is English
+    unbind_all_btn()
+    bind_btn_key('S', Key.space)
+    bind_btn_key('W', Key.enter)
+    bind_btn_key('E', Key.backspace)
+    bind_btn_key('N', '.')
+    bind_btn_key('LB', Key.shift, False)
+    pad_status['SEL'].set_clicked_callback(uiScreen.open_window)
+def english_type(stick):
+    global keyboard
+    key = ''
+    if stick.spin == 'B':
+        if stick.name == 'L':
+            key = 'v'
+        elif stick.name == 'R':
+            key = 'z'
     else:
-        uiScreen.close_window()
-pad_status['SEL'].set_clicked_callback(flip_english_mode_guide_toggle)
+        num = -1
+        if stick.name == 'L':
+            num = 0
+        elif stick.name == 'R':
+            num = 1
+        key = AXIS_KEY_MAPPING[num][angleLib.section_to_four(angleLib.get_angle_section(stick.started_angle))][stick.spin]
+    keyboard.press(key)
+    keyboard.release(key)
+
+def mouse_update():
+    pass
+def mouse_on():
+    pass
+
+
+INPUT_MODE_LIST = {
+    'english':  Writting_mode('english', english_on, english_update, english_type),
+    'mouse':    Input_mode('mouse')
+}
+
+INPUT_MODE_LIST['english'].sub = INPUT_MODE_LIST['mouse']
+
+current_input_mode = INPUT_MODE_LIST['english']
+current_input_mode.on()
 
 def axis_update():
     global gamepad
@@ -243,36 +279,31 @@ def axis_update():
         ang = vec[1]
         if not pad_status[side].check_low_to_high():
             if pad_status[side].check_high_to_low():
-                # if mode is English:
-                type_english(pad_status[side])
+                global current_input_mode
+                current_input_mode.type(pad_status[side])
                 pad_status[side].reset()
         
         if pad_status[side].is_high:
             pad_status[side].spin = pad_status[side].check_spin(pad_status[side].get_angle())
 
 def button_update():
+    global pad_status
     for btnName in list(pad_status.keys()):
         btn = pad_status[btnName]
         if type(btn) == Button:
             btn.check_pressed()
-    
-
 
 quitPadInput = False
 
-
-# maxTest = 0
 while not quitPadInput:
     update_gamepad()
-    axis_update()
-    button_update()
+    current_input_mode.update()
     # print(time.time())
     # if gamepad['BTN_START'] == 1:
     #     break
     
     time.sleep(0.02)
     
-
 
 
 
