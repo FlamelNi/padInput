@@ -3,10 +3,13 @@ import math
 import angleLib
 import gamepadLib
 import time
-from pynput.keyboard import Key, Controller
+import pynput
 from os import system
 def clearScreen():
     system('cls')
+
+def empty_function(*arg):
+    pass
 
 gamepadType = 'xboxOne'
 
@@ -16,6 +19,9 @@ TRIGGER_HIGH        = 0.80
 PUSH_ANGLE_RANGE    = 15
 HOLD_TIME           = 1
 RAPID_TIME          = 0.5
+MOUSE_SPEED         = 10
+MOUSE_SPEED_DASH    = 50
+AXIS_ZERO           = 0.2
 
 AXIS_KEY_MAPPING=[
 {
@@ -68,7 +74,8 @@ def get_mapping():
 
 gamepad = {}
 
-keyboard = Controller()
+keyboard = pynput.keyboard.Controller()
+mouse = pynput.mouse.Controller()
 
 def update_gamepad():
     global gamepad
@@ -165,6 +172,42 @@ class Button:
                 self.is_pressed = True
                 self.if_clicked()
 
+class Trigger:
+        def __init__(self, name=''):
+            self.name           = name
+            self.is_pressed     = False
+            self.last_pressed   = 0
+            self.status         = 0
+            self.if_clicked     = lambda: None
+            self.if_released    = lambda: None
+            self.if_hold        = lambda: None
+        def set_clicked_callback(self, funct):
+            self.if_clicked = funct
+        def set_released_callback(self, funct):
+            self.if_released = funct
+        def set_hold_callback(self, funct):
+            self.if_hold = funct
+        def callback_reset(self):
+            self.if_clicked     = lambda: None
+            self.if_released    = lambda: None
+            self.if_hold        = lambda: None
+        def check_pressed(self):
+            if self.is_pressed:
+                if gamepad.axis[self.name] > AXIS_HIGH:
+                    if time.time() >= self.last_pressed + HOLD_TIME:
+                        self.if_hold()
+                        self.last_pressed = self.last_pressed + RAPID_TIME - HOLD_TIME
+                else:
+                    # just released
+                    self.is_pressed = False
+                    self.if_released()
+            else:
+                if gamepad.axis[self.name] > AXIS_HIGH:
+                    self.last_pressed = time.time()
+                    self.is_pressed = True
+                    self.if_clicked()
+
+
 pad_status = {
 'L': Stick('L'),
 'R': Stick('R'),
@@ -177,7 +220,9 @@ pad_status = {
 'LS': Button('LS'),
 'RS': Button('RS'),
 'SEL': Button('SEL'),
-'STA': Button('STA')
+'STA': Button('STA'),
+'LT': Trigger('LT'),
+'RT': Trigger('RT')
 }
 
 def bind_btn_key(btn, key, rapid_hold=True):
@@ -207,31 +252,25 @@ def unbind_all_btn():
             pad_status[btn].set_released_callback(lambda:None)
 
 class Input_mode:
-    def __init__(self, name='', on=lambda:None, update=lambda:None):
+    def __init__(self, name='', on=lambda:None, update=lambda:None, type=empty_function):
         self.name = name
-        self.update = update
         self.on = on
-        self.sub = None
-
-class Writting_mode(Input_mode):
-    def __init__(self, name='', on=lambda:None, update=lambda:None, type=lambda:None):
-        Input_mode.__init__(self, name, on, update)
+        self.update = update
         self.type = type
-
+        self.sub = None
 
 # type_english(pad_status[side])
 
 def english_update():
-    axis_update()
-    button_update()
+    pass
 def english_on():
     # if mode is English
     unbind_all_btn()
-    bind_btn_key('S', Key.space)
-    bind_btn_key('W', Key.enter)
-    bind_btn_key('E', Key.backspace)
+    bind_btn_key('S', pynput.keyboard.Key.space)
+    bind_btn_key('W', pynput.keyboard.Key.enter)
+    bind_btn_key('E', pynput.keyboard.Key.backspace)
     bind_btn_key('N', '.')
-    bind_btn_key('LB', Key.shift, False)
+    bind_btn_key('LB', pynput.keyboard.Key.shift, False)
     pad_status['SEL'].set_clicked_callback(uiScreen.open_window)
 def english_type(stick):
     global keyboard
@@ -252,19 +291,44 @@ def english_type(stick):
     keyboard.release(key)
 
 def mouse_update():
-    pass
+    global mouse
+    global gamepad
+    
+    vec = angleLib.coord2vec((gamepad.axis['LX'], gamepad.axis['LY']))
+    if vec[0] > AXIS_ZERO:
+        mouse.move(MOUSE_SPEED_DASH*gamepad.axis['LX'], -MOUSE_SPEED_DASH*gamepad.axis['LY'])
+    
+    vec = angleLib.coord2vec((gamepad.axis['RX'], gamepad.axis['RY']))
+    if vec[0] > AXIS_ZERO:
+        mouse.move(MOUSE_SPEED*gamepad.axis['RX'], -MOUSE_SPEED*gamepad.axis['RY'])
 def mouse_on():
-    pass
+    global mouse
+    unbind_all_btn()
+    def left_click():
+        mouse.press(pynput.mouse.Button.left)
+    def left_release():
+        mouse.release(pynput.mouse.Button.left)
+    def right_click():
+        mouse.press(pynput.mouse.Button.right)
+    def right_release():
+        mouse.release(pynput.mouse.Button.right)
+    pad_status['RB'].set_clicked_callback(left_click)
+    pad_status['RB'].set_released_callback(left_release)
+    pad_status['RT'].set_clicked_callback(right_click)
+    pad_status['RT'].set_released_callback(right_release)
+    
+    
 
 
 INPUT_MODE_LIST = {
-    'english':  Writting_mode('english', english_on, english_update, english_type),
-    'mouse':    Input_mode('mouse')
+    'english':  Input_mode('english', english_on, english_update, english_type),
+    'mouse':    Input_mode('mouse', mouse_on, mouse_update)
 }
 
 INPUT_MODE_LIST['english'].sub = INPUT_MODE_LIST['mouse']
 
-current_input_mode = INPUT_MODE_LIST['english']
+selected_input_mode = INPUT_MODE_LIST['english']
+current_input_mode = selected_input_mode
 current_input_mode.on()
 
 def axis_update():
@@ -293,10 +357,27 @@ def button_update():
         if type(btn) == Button:
             btn.check_pressed()
 
+def trigger_update():
+    global pad_status
+    for btnName in list(pad_status.keys()):
+        btn = pad_status[btnName]
+        if type(btn) == Trigger:
+            btn.check_pressed()
+
 quitPadInput = False
 
 while not quitPadInput:
     update_gamepad()
+    axis_update()
+    button_update()
+    trigger_update()
+    if gamepad.axis['LT'] >= AXIS_HIGH:
+        if current_input_mode == selected_input_mode:
+            current_input_mode = selected_input_mode.sub
+            current_input_mode.on()
+    elif current_input_mode != selected_input_mode:
+        current_input_mode = selected_input_mode
+        current_input_mode.on()
     current_input_mode.update()
     # print(time.time())
     # if gamepad['BTN_START'] == 1:
