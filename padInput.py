@@ -244,9 +244,9 @@ def bind_btn_key(btn, key, rapid_hold=True):
         
     return False
 
-def unbind_all_btn():
+def unbind_all_btn(exception=[]):
     for btn in pad_status:
-        if type(btn) == Button:
+        if (type(pad_status[btn]) == Button or type(pad_status[btn]) == Trigger) and not (btn in exception):
             pad_status[btn].set_clicked_callback(lambda:None)
             pad_status[btn].set_hold_callback(lambda:None)
             pad_status[btn].set_released_callback(lambda:None)
@@ -265,13 +265,12 @@ def english_update():
     pass
 def english_on():
     # if mode is English
-    unbind_all_btn()
     bind_btn_key('S', pynput.keyboard.Key.space)
     bind_btn_key('W', pynput.keyboard.Key.enter)
     bind_btn_key('E', pynput.keyboard.Key.backspace)
     bind_btn_key('N', '.')
     bind_btn_key('LB', pynput.keyboard.Key.shift, False)
-    pad_status['SEL'].set_clicked_callback(uiScreen.open_window)
+    pad_status['LS'].set_clicked_callback(uiScreen.open_window)
 def english_type(stick):
     global keyboard
     key = ''
@@ -303,7 +302,6 @@ def mouse_update():
         mouse.move(MOUSE_SPEED*gamepad.axis['RX'], -MOUSE_SPEED*gamepad.axis['RY'])
 def mouse_on():
     global mouse
-    unbind_all_btn()
     def left_click():
         mouse.press(pynput.mouse.Button.left)
     def left_release():
@@ -325,9 +323,13 @@ INPUT_MODE_LIST = {
     'mouse':    Input_mode('mouse', mouse_on, mouse_update)
 }
 
+INPUT_MODE_ROTATION = [
+    INPUT_MODE_LIST['english']
+]
+
 INPUT_MODE_LIST['english'].sub = INPUT_MODE_LIST['mouse']
 
-selected_input_mode = INPUT_MODE_LIST['english']
+selected_input_mode = INPUT_MODE_ROTATION[0]
 current_input_mode = selected_input_mode
 current_input_mode.on()
 
@@ -366,23 +368,26 @@ def trigger_update():
 
 quitPadInput = False
 
+def toggle_sub_mode():
+    global current_input_mode
+    global selected_input_mode
+    if current_input_mode == selected_input_mode:
+        current_input_mode = selected_input_mode.sub
+    else:
+        current_input_mode = selected_input_mode
+    unbind_all_btn(['SEL'])
+    current_input_mode.on()
+pad_status['SEL'].set_clicked_callback(toggle_sub_mode)
+
 while not quitPadInput:
     update_gamepad()
     axis_update()
     button_update()
     trigger_update()
-    if gamepad.axis['LT'] >= AXIS_HIGH:
-        if current_input_mode == selected_input_mode:
-            current_input_mode = selected_input_mode.sub
-            current_input_mode.on()
-    elif current_input_mode != selected_input_mode:
-        current_input_mode = selected_input_mode
-        current_input_mode.on()
-    current_input_mode.update()
     # print(time.time())
     # if gamepad['BTN_START'] == 1:
     #     break
-    
+    current_input_mode.update()
     time.sleep(0.02)
     
 
